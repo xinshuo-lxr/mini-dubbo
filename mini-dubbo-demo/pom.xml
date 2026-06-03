@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.apache.dubbo</groupId>
+        <artifactId>mini-dubbo</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>mini-dubbo-demo</artifactId>
+    <packaging>pom</packaging>
+    <name>mini-dubbo-demo</name>
+    <description>示例模块</description>
+
+    <modules>
+        <module>mini-dubbo-demo-api</module>
+        <module>mini-dubbo-demo-provider</module>
+        <module>mini-dubbo-demo-consumer</module>
+    </modules>
+</project>
