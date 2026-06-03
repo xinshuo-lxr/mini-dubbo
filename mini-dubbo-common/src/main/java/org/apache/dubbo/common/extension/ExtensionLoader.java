@@ -37,6 +37,9 @@ public class ExtensionLoader<T> {
     /** 已创建的扩展实例缓存 */
     private static final ConcurrentMap<Class<?>, Object> EXTENSION_INSTANCES = new ConcurrentHashMap<>();
 
+    private final ConcurrentMap<String, Holder<Object>> cachedInstances = new ConcurrentHashMap<>();
+
+
     /** 当前 SPI 接口 */
     private final Class<T> type;
 
@@ -100,7 +103,8 @@ public class ExtensionLoader<T> {
         if (name == null || name.isEmpty()) {
             throw new IllegalArgumentException("Extension name == null");
         }
-        Holder<Object> holder = new Holder<>();
+        // 将一个name的获取锁定
+        Holder<Object> holder = cachedInstances.computeIfAbsent(name, k -> new Holder<>());
         Object instance = holder.get();
         if (instance == null) {
             synchronized (holder) {
@@ -147,7 +151,7 @@ public class ExtensionLoader<T> {
     /**
      * 获取所有 @Activate 注解的扩展（按 group 过滤，按 order 排序）
      */
-    public List<T> getActivateExtension(org.apache.dubbo.common.URL url, String key, String group) {
+    public List<T> getActivateExtension(URL url, String key, String group) {
         Map<String, Class<?>> extensionClasses = getExtensionClasses();
         List<T> activates = new ArrayList<>();
         for (Map.Entry<String, Class<?>> entry : extensionClasses.entrySet()) {
