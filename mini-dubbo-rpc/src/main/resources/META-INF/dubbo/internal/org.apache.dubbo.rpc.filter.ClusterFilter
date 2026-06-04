@@ -1,0 +1,2 @@
+# 集群级 Filter（LoadBalance 之前执行）
+# 在这里注册自定义 ClusterFilter，格式：name=className

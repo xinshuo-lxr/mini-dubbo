@@ -1,0 +1,1 @@
+jdk=org.apache.dubbo.rpc.proxy.JdkProxyFactory

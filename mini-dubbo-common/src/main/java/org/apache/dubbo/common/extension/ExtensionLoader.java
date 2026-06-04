@@ -37,9 +37,8 @@ public class ExtensionLoader<T> {
     /** 已创建的扩展实例缓存 */
     private static final ConcurrentMap<Class<?>, Object> EXTENSION_INSTANCES = new ConcurrentHashMap<>();
 
+    /** 用于并发控制 */
     private final ConcurrentMap<String, Holder<Object>> cachedInstances = new ConcurrentHashMap<>();
-
-
     /** 当前 SPI 接口 */
     private final Class<T> type;
 

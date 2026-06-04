@@ -48,6 +48,7 @@ public abstract class AbstractInvoker<T> implements Invoker<T> {
         // ① 准备调用数据
         prepareInvocation(invocation);
         // ② 子类实现：真正的 RPC 调用
+        // dubbo 在这里实现传递给层层传递，各层实现：封装心跳、重连逻辑，实现超时等 这里直接简化
         return doInvoke(invocation);
     }
 

@@ -1,0 +1,2 @@
+# 实例级 Filter（LoadBalance 之后执行）
+# 在这里注册自定义 Filter，格式：name=className
