@@ -75,24 +75,24 @@ demoService.sayHello("dubbo")
 
 ## 与真实 Dubbo 的对比
 
-| 组件 | mini-dubbo | 真实 Dubbo |
-|------|-----------|-----------|
-| SPI | 简化版 ExtensionLoader | 完整版 + ScopeModel 隔离 |
-| URL | 简化版（直接 HashMap） | URLAddress + URLParam 压缩存储 |
-| 网络 | Netty（简化版） | Netty（完整版 + 心跳/重连/编解码器链） |
-| 序列化 | JDK Serializable | Hessian2 / Protobuf / Kryo |
-| 注册中心 | ZooKeeper + Curator | ZooKeeper / Nacos / Consul 等 |
-| 代理 | JDK Proxy | Javassist |
-| Filter | 两级（ClusterFilter + Filter） | 两级 + Wrapper 链 |
-| Cluster | failover + failfast | failover/failfast/failsafe/failback/forking/broadcast |
-| Directory | StaticDirectory + RegistryDirectory | + ServiceDiscoveryRegistryDirectory |
-| 配置 | 简化版 Bootstrap | DubboBootstrap + DefaultApplicationDeployer + 内部模块 |
+| 组件 | mini-dubbo                           | 真实 Dubbo |
+|------|--------------------------------------|-----------|
+| SPI | 简化版 ExtensionLoader                  | 完整版 + ScopeModel 隔离 |
+| URL | 简化版（直接 HashMap）                      | URLAddress + URLParam 压缩存储 |
+| 网络 | Netty（简化版）                           | Netty（完整版 + 心跳/重连/编解码器链） |
+| 序列化 | JDK Serializable                     | Hessian2 / Protobuf / Kryo |
+| 注册中心 | ZooKeeper + Curator                  | ZooKeeper / Nacos / Consul 等 |
+| 代理 | JDK Proxy                            | Javassist |
+| Filter | 两级（ClusterFilter + Filter）+ Wrapper链 | 两级 + Wrapper 链 |
+| Cluster | failover + failfast                  | failover/failfast/failsafe/failback/forking/broadcast |
+| Directory | StaticDirectory + RegistryDirectory  | + ServiceDiscoveryRegistryDirectory |
+| 配置 | 简化版 Bootstrap                        | DubboBootstrap + DefaultApplicationDeployer + 内部模块 |
 
 ## 学习路径
 
 1. **common** → 理解 SPI 机制和 URL 的作用
-2. **remoting** → 理解网络通信层
-3. **rpc** → 理解 Invoker 抽象和 Filter 链
+2. **rpc** → 理解 Invoker 抽象和 Filter 链
+3. **remoting** → 理解网络通信层
 4. **cluster** → 理解集群容错和负载均衡
 5. **registry** → 理解服务注册与发现
 6. **config** → 理解启动编排和配置组装
