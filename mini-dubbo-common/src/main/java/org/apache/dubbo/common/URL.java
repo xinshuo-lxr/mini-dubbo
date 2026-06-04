@@ -1,5 +1,7 @@
 package org.apache.dubbo.common;
 
+import org.apache.dubbo.common.utils.StringUtils;
+
 import java.io.Serializable;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
@@ -101,6 +103,11 @@ public class URL implements Serializable {
             return defaultValue;
         }
         return Integer.parseInt(value);
+    }
+
+    public String getMethodParameter(String method, String key, String defaultValue) {
+        String value = getMethodParameter(method, key);
+        return StringUtils.isEmpty(value) ? defaultValue : value;
     }
 
     // ==================== 不可变修改（copy-on-write） ====================
