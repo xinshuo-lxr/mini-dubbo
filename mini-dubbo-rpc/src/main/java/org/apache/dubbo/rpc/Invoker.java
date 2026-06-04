@@ -19,7 +19,7 @@ public interface Invoker<T> {
     Class<T> getInterface();
 
     /** 执行调用 — 唯一的核心方法 */
-    Result invoke(Invocation invocation) throws RpcException;
+    Result invoke(Invocation invocation)  throws RpcException;
 
     /** 是否可用 */
     boolean isAvailable();

@@ -1,0 +1,2 @@
+failover=org.apache.dubbo.rpc.cluster.support.FailoverCluster
+failfast=org.apache.dubbo.rpc.cluster.support.FailfastCluster
