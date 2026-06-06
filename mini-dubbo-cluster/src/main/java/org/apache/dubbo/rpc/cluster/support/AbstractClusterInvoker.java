@@ -34,7 +34,7 @@ public abstract class AbstractClusterInvoker<T> implements Invoker<T> {
     public URL getUrl() { return directory.getUrl(); }
 
     @Override
-    public Class<T> getInterface() { return null; /* 从 Directory 获取 */ }
+    public Class<T> getInterface() { return directory.getInterface(); }
 
     @Override
     public boolean isAvailable() { return !destroyed && directory.isAvailable(); }

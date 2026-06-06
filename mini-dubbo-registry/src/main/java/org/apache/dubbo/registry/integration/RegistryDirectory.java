@@ -150,6 +150,9 @@ public class RegistryDirectory<T> implements Directory<T>, NotifyListener {
     }
 
     @Override
+    public Class<T> getInterface() { return serviceType; }
+
+    @Override
     public List<Invoker<T>> list(Invocation invocation) throws RpcException {
         if (destroyed) {
             throw new RpcException("Directory is destroyed");

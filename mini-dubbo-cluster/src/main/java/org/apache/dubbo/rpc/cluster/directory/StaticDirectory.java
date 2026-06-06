@@ -19,14 +19,19 @@ import java.util.List;
  */
 public class StaticDirectory<T> implements Directory<T> {
 
+    private final Class<T> serviceType;
     private final URL url;
     private final List<Invoker<T>> invokers;
     private volatile boolean destroyed;
 
-    public StaticDirectory(URL url, List<Invoker<T>> invokers) {
+    public StaticDirectory(Class<T> serviceType, URL url, List<Invoker<T>> invokers) {
+        this.serviceType = serviceType;
         this.url = url;
         this.invokers = invokers;
     }
+
+    @Override
+    public Class<T> getInterface() { return serviceType; }
 
     @Override
     public List<Invoker<T>> list(Invocation invocation)  throws RpcException {
