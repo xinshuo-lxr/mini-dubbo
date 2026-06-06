@@ -5,6 +5,7 @@ import org.apache.dubbo.rpc.Invoker;
 import org.apache.dubbo.rpc.RpcException;
 import org.apache.dubbo.rpc.cluster.LoadBalance;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -19,13 +20,23 @@ import java.util.concurrent.ThreadLocalRandom;
 public class RandomLoadBalance implements LoadBalance {
 
     @Override
-    public <T> Invoker<T> select(List<Invoker<T>> invokers, Invocation invocation) throws RpcException {
+    public <T> Invoker<T> select(List<Invoker<T>> invokers, Invocation invocation, List<Invoker<T>> invoked) throws RpcException {
         if (invokers == null || invokers.isEmpty()) {
             throw new RpcException("No available invokers");
         }
         if (invokers.size() == 1) {
             return invokers.get(0);
         }
+
+        // 如果有已调用过的 invoker，优先从未调用过的中选择
+        if (invoked != null && !invoked.isEmpty() && invokers.size() > invoked.size()) {
+            List<Invoker<T>> notInvoked = new ArrayList<>(invokers);
+            notInvoked.removeAll(invoked);
+            if (!notInvoked.isEmpty()) {
+                return notInvoked.get(ThreadLocalRandom.current().nextInt(notInvoked.size()));
+            }
+        }
+
         return invokers.get(ThreadLocalRandom.current().nextInt(invokers.size()));
     }
 }
