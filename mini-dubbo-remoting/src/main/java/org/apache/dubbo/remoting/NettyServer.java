@@ -70,6 +70,7 @@ public class NettyServer {
                     @Override
                     protected void initChannel(SocketChannel ch) {
                         ch.pipeline()
+                                .addLast("frameDecoder", new DubboFrameDecoder())
                                 .addLast("decoder", new RequestDecoder())
                                 .addLast("encoder", new ResponseEncoder())
                                 .addLast("handler", new ServerHandler(requestHandler, bizExecutor));
@@ -93,28 +94,36 @@ public class NettyServer {
     private static class RequestDecoder extends ChannelInboundHandlerAdapter {
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-            ByteBuf buf = (ByteBuf) msg;
-
-            DubboCodec.Header header = DubboCodec.decodeHeader(buf);
-            if (header == null) {
+            if (!(msg instanceof ByteBuf)) {
+                ctx.fireChannelRead(msg);
                 return;
             }
 
-            if (!header.isRequest()) {
-                throw new RuntimeException("Expected request but got type: " + header.getType());
+            ByteBuf buf = (ByteBuf) msg;
+            try {
+                DubboCodec.Header header = DubboCodec.decodeHeader(buf);
+                if (header == null) {
+                    return;
+                }
+
+                if (!header.isRequest()) {
+                    throw new RuntimeException("Expected request but got type: " + header.getType());
+                }
+
+                if (buf.readableBytes() < header.getDataLength()) {
+                    throw new RuntimeException("Incomplete data: expected " + header.getDataLength()
+                            + " but got " + buf.readableBytes());
+                }
+
+                Object data = DubboCodec.decodeData(buf, header.getDataLength());
+
+                Request request = new Request(header.getId());
+                request.setData(data);
+
+                ctx.fireChannelRead(request);
+            } finally {
+                buf.release();
             }
-
-            if (buf.readableBytes() < header.getDataLength()) {
-                throw new RuntimeException("Incomplete data: expected " + header.getDataLength()
-                        + " but got " + buf.readableBytes());
-            }
-
-            Object data = DubboCodec.decodeData(buf, header.getDataLength());
-
-            Request request = new Request(header.getId());
-            request.setData(data);
-
-            ctx.fireChannelRead(request);
         }
     }
 
