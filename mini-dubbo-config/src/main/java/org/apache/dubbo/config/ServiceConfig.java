@@ -2,6 +2,7 @@ package org.apache.dubbo.config;
 
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.extension.ExtensionLoader;
+import org.apache.dubbo.common.utils.NetUtils;
 import org.apache.dubbo.registry.Registry;
 import org.apache.dubbo.registry.RegistryFactory;
 import org.apache.dubbo.rpc.Exporter;
@@ -132,7 +133,7 @@ public class ServiceConfig<T> {
         String protocolName = (protocolConfig != null) ? protocolConfig.getName() : "dubbo";
         int port = (protocolConfig != null) ? protocolConfig.getPort() : 20880;
 
-        return new URL(protocolName, "0.0.0.0", port, interfaceClass.getName(), params);
+        return new URL(protocolName, NetUtils.getLocalHost(), port, interfaceClass.getName(), params);
     }
 
     /**

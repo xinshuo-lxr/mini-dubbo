@@ -2,12 +2,13 @@ package org.apache.dubbo.remoting;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelInitializer;
+import io.netty.channel.ChannelOutboundHandlerAdapter;
+import io.netty.channel.ChannelPromise;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
@@ -23,10 +24,8 @@ import java.util.concurrent.TimeUnit;
 /**
  * Netty 客户端 — Consumer 端连接 Provider，发送 RPC 请求。
  *
- * 工作流程：
- * 1. 连接到 Provider 的 host:port
- * 2. 发送请求 → 编码 Request → 通过 Channel 发出
- * 3. 等待响应 → 收到字节 → 解码 Response → 匹配 Request ID → 完成 Future
+ * Pipeline：
+ *   Encoder（Request → ByteBuf）→ Decoder（ByteBuf → Response）→ ClientHandler（匹配 Future）
  *
  * 对应 Dubbo 源码：org.apache.dubbo.remoting.transport.netty4.NettyClient
  */
@@ -39,7 +38,7 @@ public class NettyClient {
     private Channel channel;
     private EventLoopGroup group;
 
-    /** 未完成的请求：requestId → CompletableFuture，用于异步等待响应 */
+    /** 未完成的请求：requestId → CompletableFuture */
     private final ConcurrentMap<Long, CompletableFuture<Response>> pendingRequests = new ConcurrentHashMap<>();
 
     public NettyClient(String host, int port) {
@@ -47,9 +46,6 @@ public class NettyClient {
         this.port = port;
     }
 
-    /**
-     * 连接到 Provider
-     */
     public void connect() throws InterruptedException {
         group = new NioEventLoopGroup();
         Bootstrap bootstrap = new Bootstrap();
@@ -58,7 +54,10 @@ public class NettyClient {
                 .handler(new ChannelInitializer<SocketChannel>() {
                     @Override
                     protected void initChannel(SocketChannel ch) {
-                        ch.pipeline().addLast(new ClientHandler(pendingRequests));
+                        ch.pipeline()
+                                .addLast("encoder", new RequestEncoder())
+                                .addLast("decoder", new ResponseDecoder())
+                                .addLast("handler", new ClientHandler(pendingRequests));
                     }
                 });
 
@@ -69,21 +68,13 @@ public class NettyClient {
 
     /**
      * 发送请求并等待响应
-     *
-     * @param request 请求对象
-     * @param timeout 超时时间（毫秒）
-     * @return 响应对象
      */
     public Response send(Request request, int timeout) {
         CompletableFuture<Response> future = new CompletableFuture<>();
         pendingRequests.put(request.getId(), future);
 
         try {
-            // 编码 → 发送
-            byte[] bytes = DubboCodec.encode(request);
-            channel.writeAndFlush(Unpooled.wrappedBuffer(bytes));
-
-            // 等待响应（超时则抛异常）
+            channel.writeAndFlush(request);
             return future.get(timeout, TimeUnit.MILLISECONDS);
         } catch (Exception e) {
             pendingRequests.remove(request.getId());
@@ -91,17 +82,70 @@ public class NettyClient {
         }
     }
 
-    /**
-     * 关闭连接
-     */
     public void close() {
         if (channel != null) channel.close();
         if (group != null) group.shutdownGracefully();
+        // 清理所有 pending 请求
+        for (CompletableFuture<Response> future : pendingRequests.values()) {
+            future.completeExceptionally(new RuntimeException("Channel closed"));
+        }
+        pendingRequests.clear();
         logger.info("Netty Client closed");
     }
 
     /**
-     * 客户端处理器：收到字节 → 解码 Response → 找到对应的 Future → 完成
+     * 编码器：Request → ByteBuf
+     */
+    private static class RequestEncoder extends ChannelOutboundHandlerAdapter {
+        @Override
+        public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
+            if (msg instanceof Request) {
+                ByteBuf out = ctx.alloc().buffer();
+                DubboCodec.encodeRequest(out, (Request) msg);
+                ctx.write(out, promise);
+            } else {
+                ctx.write(msg, promise);
+            }
+        }
+    }
+
+    /**
+     * 解码器：ByteBuf → Response
+     */
+    private static class ResponseDecoder extends ChannelInboundHandlerAdapter {
+        @Override
+        public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+            ByteBuf buf = (ByteBuf) msg;
+
+            DubboCodec.Header header = DubboCodec.decodeHeader(buf);
+            if (header == null) {
+                return;
+            }
+
+            if (!header.isResponse()) {
+                throw new RuntimeException("Expected response but got type: " + header.getType());
+            }
+
+            if (buf.readableBytes() < header.getDataLength()) {
+                throw new RuntimeException("Incomplete data: expected " + header.getDataLength()
+                        + " but got " + buf.readableBytes());
+            }
+
+            Object data = DubboCodec.decodeData(buf, header.getDataLength());
+
+            Response response = new Response(header.getId());
+            if (data instanceof String) {
+                response.setErrorMsg((String) data);
+            } else {
+                response.setResult(data);
+            }
+
+            ctx.fireChannelRead(response);
+        }
+    }
+
+    /**
+     * 业务处理器：匹配 Response 和 Future
      */
     private static class ClientHandler extends ChannelInboundHandlerAdapter {
         private final ConcurrentMap<Long, CompletableFuture<Response>> pendingRequests;
@@ -112,18 +156,28 @@ public class NettyClient {
 
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-            ByteBuf buf = (ByteBuf) msg;
-            byte[] bytes = new byte[buf.readableBytes()];
-            buf.readBytes(bytes);
-
-            // 解码 Response
-            Response response = (Response) DubboCodec.decode(bytes);
-
-            // 找到对应的 Future，完成它
-            CompletableFuture<Response> future = pendingRequests.remove(response.getId());
-            if (future != null) {
-                future.complete(response);
+            if (msg instanceof Response) {
+                Response response = (Response) msg;
+                CompletableFuture<Response> future = pendingRequests.remove(response.getId());
+                if (future != null) {
+                    if (response.getErrorMsg() != null) {
+                        future.complete(response);
+                    } else {
+                        future.complete(response);
+                    }
+                }
             }
+        }
+
+        @Override
+        public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+            // 连接断开时，fail 所有 pending 请求
+            for (CompletableFuture<Response> future : pendingRequests.values()) {
+                future.completeExceptionally(new RuntimeException("Channel disconnected"));
+            }
+            pendingRequests.clear();
+            logger.warn("Channel disconnected: " + ctx.channel().remoteAddress());
+            super.channelInactive(ctx);
         }
 
         @Override

@@ -2,6 +2,7 @@ package org.apache.dubbo.config;
 
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.extension.ExtensionLoader;
+import org.apache.dubbo.common.utils.NetUtils;
 import org.apache.dubbo.registry.NotifyListener;
 import org.apache.dubbo.registry.Registry;
 import org.apache.dubbo.registry.RegistryFactory;
@@ -149,7 +150,7 @@ public class ReferenceConfig<T> {
             params.put("version", version);
         }
 
-        return new URL("consumer", "127.0.0.1", 0, interfaceClass.getName(), params);
+        return new URL("consumer", NetUtils.getLocalHost(), 0, interfaceClass.getName(), params);
     }
 
     /**
