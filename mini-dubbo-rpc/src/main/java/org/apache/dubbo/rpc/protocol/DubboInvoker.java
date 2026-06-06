@@ -51,7 +51,14 @@ public class DubboInvoker<T> extends AbstractInvoker<T> {
             throw new RpcException("Remote call failed: " + response.getErrorMsg());
         }
 
-        return (AppResponse) response.getResult();
+        Object result = response.getResult();
+        if (result == null) {
+            throw new RpcException("Response result is null, response id: " + response.getId());
+        }
+        if (!(result instanceof AppResponse)) {
+            throw new RpcException("Unexpected response result type: " + result.getClass().getName());
+        }
+        return (AppResponse) result;
     }
 
     @Override
