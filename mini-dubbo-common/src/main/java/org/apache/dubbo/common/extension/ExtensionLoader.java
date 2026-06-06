@@ -310,7 +310,7 @@ public class ExtensionLoader<T> {
      */
     private boolean isWrapperClass(Class<?> clazz) {
         try {
-            Constructor<?>[] constructors = clazz.getConstructors();
+            Constructor<?>[] constructors = clazz.getDeclaredConstructors();
             for (Constructor<?> constructor : constructors) {
                 if (constructor.getParameterTypes().length == 1
                         && constructor.getParameterTypes()[0] == type) {
