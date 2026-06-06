@@ -30,6 +30,9 @@ public class URL implements Serializable {
     private final String path;         // 接口名，如 "org.apache.dubbo.api.demo.DemoService"
     private final Map<String, String> parameters;
 
+    /** 缓存 hashCode（URL 是不可变对象，hashCode 不会变） */
+    private volatile int hashCode;
+
     public URL(String protocol, String host, int port, String path, Map<String, String> parameters) {
         this(protocol, null, null, host, port, path, parameters);
     }
@@ -303,11 +306,25 @@ public class URL implements Serializable {
         if (this == obj) return true;
         if (!(obj instanceof URL)) return false;
         URL other = (URL) obj;
-        return toString().equals(other.toString());
+        return port == other.port
+                && java.util.Objects.equals(protocol, other.protocol)
+                && java.util.Objects.equals(host, other.host)
+                && java.util.Objects.equals(path, other.path)
+                && java.util.Objects.equals(parameters, other.parameters);
     }
 
     @Override
     public int hashCode() {
-        return toString().hashCode();
+        int h = hashCode;
+        if (h == 0) {
+            h = 17;
+            h = 31 * h + java.util.Objects.hashCode(protocol);
+            h = 31 * h + java.util.Objects.hashCode(host);
+            h = 31 * h + port;
+            h = 31 * h + java.util.Objects.hashCode(path);
+            h = 31 * h + java.util.Objects.hashCode(parameters);
+            hashCode = h;
+        }
+        return h;
     }
 }
