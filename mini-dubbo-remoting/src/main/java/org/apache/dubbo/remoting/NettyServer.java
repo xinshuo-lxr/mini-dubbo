@@ -2,7 +2,6 @@ package org.apache.dubbo.remoting;
 
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
@@ -16,13 +15,24 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
 /**
  * Netty 服务端 — Provider 端监听端口，接收 Consumer 的 RPC 请求。
  *
+ * 线程模型：
+ *   Boss 线程（1个）：接收连接
+ *   Worker 线程（默认 CPU*2）：网络 I/O（读写 ByteBuf）
+ *   业务线程池（独立）：执行 requestHandler（避免阻塞 IO 线程）
+ *
  * Pipeline：
- *   Decoder（ByteBuf → Request）→ ServerHandler（处理请求）→ Encoder（Response → ByteBuf）
+ *   Decoder（ByteBuf → Request）→ ServerHandler（分派到业务线程）→ Encoder（Response → ByteBuf）
  *
  * 对应 Dubbo 源码：org.apache.dubbo.remoting.transport.netty4.NettyServer
  */
@@ -35,9 +45,18 @@ public class NettyServer {
     private EventLoopGroup bossGroup;
     private EventLoopGroup workerGroup;
 
+    /** 业务线程池 — 执行 requestHandler，不阻塞 Netty IO 线程 */
+    private final ExecutorService bizExecutor;
+
     public NettyServer(int port, Function<Request, Response> requestHandler) {
         this.port = port;
         this.requestHandler = requestHandler;
+        this.bizExecutor = new ThreadPoolExecutor(
+                0, Integer.MAX_VALUE,
+                60L, TimeUnit.SECONDS,
+                new SynchronousQueue<>(),
+                new NamedThreadFactory("mini-dubbo-biz")
+        );
     }
 
     public void start() throws InterruptedException {
@@ -53,7 +72,7 @@ public class NettyServer {
                         ch.pipeline()
                                 .addLast("decoder", new RequestDecoder())
                                 .addLast("encoder", new ResponseEncoder())
-                                .addLast("handler", new ServerHandler(requestHandler));
+                                .addLast("handler", new ServerHandler(requestHandler, bizExecutor));
                     }
                 });
 
@@ -64,15 +83,12 @@ public class NettyServer {
     public void stop() {
         if (bossGroup != null) bossGroup.shutdownGracefully();
         if (workerGroup != null) workerGroup.shutdownGracefully();
+        bizExecutor.shutdown();
         logger.info("Netty Server stopped");
     }
 
     /**
      * 解码器：ByteBuf → Request
-     *
-     * 1. 读协议头（15 字节）
-     * 2. 读数据体（dataLength 字节）
-     * 3. 反序列化为 Request 对象
      */
     private static class RequestDecoder extends ChannelInboundHandlerAdapter {
         @Override
@@ -119,21 +135,36 @@ public class NettyServer {
     }
 
     /**
-     * 业务处理器：Request → Response
+     * 业务处理器：将请求分派到业务线程池执行
+     *
+     * 不在 IO 线程上执行业务逻辑，避免阻塞 EventLoop。
+     * 业务线程执行完后调用 ctx.writeAndFlush()，Netty 会自动切换回 IO 线程写数据。
      */
     private static class ServerHandler extends ChannelInboundHandlerAdapter {
         private final Function<Request, Response> requestHandler;
+        private final ExecutorService bizExecutor;
 
-        public ServerHandler(Function<Request, Response> requestHandler) {
+        public ServerHandler(Function<Request, Response> requestHandler, ExecutorService bizExecutor) {
             this.requestHandler = requestHandler;
+            this.bizExecutor = bizExecutor;
         }
 
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
             if (msg instanceof Request) {
                 Request request = (Request) msg;
-                Response response = requestHandler.apply(request);
-                ctx.writeAndFlush(response);
+                // 分派到业务线程池，不阻塞 IO 线程
+                bizExecutor.execute(() -> {
+                    try {
+                        Response response = requestHandler.apply(request);
+                        ctx.writeAndFlush(response);
+                    } catch (Exception e) {
+                        logger.error("Biz handler error", e);
+                        Response errorResponse = new Response(request.getId());
+                        errorResponse.setErrorMsg(e.getMessage());
+                        ctx.writeAndFlush(errorResponse);
+                    }
+                });
             }
         }
 
@@ -141,6 +172,25 @@ public class NettyServer {
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
             logger.error("Server handler error", cause);
             ctx.close();
+        }
+    }
+
+    /**
+     * 命名线程池工厂 — 线程名带前缀，方便排查问题
+     */
+    private static class NamedThreadFactory implements ThreadFactory {
+        private final AtomicInteger counter = new AtomicInteger(0);
+        private final String prefix;
+
+        public NamedThreadFactory(String prefix) {
+            this.prefix = prefix;
+        }
+
+        @Override
+        public Thread newThread(Runnable r) {
+            Thread t = new Thread(r, prefix + "-" + counter.incrementAndGet());
+            t.setDaemon(true);
+            return t;
         }
     }
 }
