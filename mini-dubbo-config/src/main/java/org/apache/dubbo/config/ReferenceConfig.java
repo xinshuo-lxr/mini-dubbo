@@ -161,10 +161,11 @@ public class ReferenceConfig<T> {
         int port = 2181;
         String host = address;
 
-        int colon = address.indexOf(':');
-        if (colon > 0) {
-            host = address.substring(0, colon);
-            port = Integer.parseInt(address.substring(colon + 1));
+        int backslash = address.indexOf("//");
+        int lastColon = address.lastIndexOf(":");
+        if (backslash > 0 && lastColon > 0) {
+            host = address.substring(backslash + 2, lastColon);
+            port = Integer.parseInt(address.substring(lastColon + 1));
         }
 
         return new URL(protocol, host, port, "", new HashMap<>());
