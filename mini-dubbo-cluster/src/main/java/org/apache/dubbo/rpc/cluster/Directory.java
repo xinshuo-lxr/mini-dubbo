@@ -18,6 +18,11 @@ import java.util.List;
 public interface Directory<T> {
 
     /**
+     * 获取服务接口类型
+     */
+    Class<T> getInterface();
+
+    /**
      * 获取可用 Invoker 列表（经过路由过滤）
      */
     List<Invoker<T>> list(Invocation invocation) throws RpcException;

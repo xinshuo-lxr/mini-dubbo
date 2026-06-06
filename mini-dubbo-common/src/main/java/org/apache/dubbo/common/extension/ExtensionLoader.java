@@ -215,14 +215,11 @@ public class ExtensionLoader<T> {
     private T createAdaptiveExtension() {
         try {
             Class<?> clazz = getAdaptiveExtensionClass();
-            if (clazz == null) {
-                throw new IllegalStateException("No adaptive extension for " + type.getName());
-            }
-            // 如果是标注了 @Adaptive 的类，直接实例化
-            if (clazz.getAnnotation(Adaptive.class) != null) {
+            if (clazz != null && clazz.getAnnotation(Adaptive.class) != null) {
+                // 有 @Adaptive 标注在类上 → 直接实例化该类
                 return type.cast(clazz.newInstance());
             }
-            // 否则动态生成代理
+            // 没有 @Adaptive 类 → 动态生成代理（从方法上的 @Adaptive 读 URL 参数）
             return type.cast(Proxy.newProxyInstance(
                     type.getClassLoader(),
                     new Class[]{type},
