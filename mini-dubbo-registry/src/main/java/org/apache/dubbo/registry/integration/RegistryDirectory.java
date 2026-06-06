@@ -88,7 +88,8 @@ public class RegistryDirectory<T> implements Directory<T>, NotifyListener {
             oldInvoker.destroy();
         }
 
-        // 替换
+        // 用新 Map 整体替换，避免残留过期条目
+        this.urlInvokerMap.clear();
         this.urlInvokerMap.putAll(newUrlInvokerMap);
         this.invokers = newInvokers;
 
@@ -125,7 +126,7 @@ public class RegistryDirectory<T> implements Directory<T>, NotifyListener {
         Map<String, String> consumerParams = consumerUrl.getParameters();
         Map<String, String> providerParams = providerUrl.getParameters();
 
-        Map<String, String> merged = new ConcurrentHashMap<>(providerParams);
+        Map<String, String> merged = new java.util.HashMap<>(providerParams);
         // 消费者参数覆盖 Provider 参数
         for (Map.Entry<String, String> entry : consumerParams.entrySet()) {
             String key = entry.getKey();
