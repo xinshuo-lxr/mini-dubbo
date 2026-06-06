@@ -24,7 +24,12 @@ public class Request implements Serializable {
         this.id = INVOKE_ID.getAndIncrement();
     }
 
+    public Request(long id) {
+        this.id = id;
+    }
+
     public long getId() { return id; }
+
     public Object getData() { return data; }
     public void setData(Object data) { this.data = data; }
 }

@@ -7,6 +7,8 @@ import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelInitializer;
+import io.netty.channel.ChannelOutboundHandlerAdapter;
+import io.netty.channel.ChannelPromise;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
@@ -14,18 +16,13 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 /**
  * Netty 服务端 — Provider 端监听端口，接收 Consumer 的 RPC 请求。
  *
- * 工作流程：
- * 1. 绑定端口，启动 Netty Server
- * 2. 收到请求 → 解码为 Request
- * 3. 调用 requestHandler 处理请求 → 得到 Response
- * 4. 编码 Response → 发回给 Consumer
+ * Pipeline：
+ *   Decoder（ByteBuf → Request）→ ServerHandler（处理请求）→ Encoder（Response → ByteBuf）
  *
  * 对应 Dubbo 源码：org.apache.dubbo.remoting.transport.netty4.NettyServer
  */
@@ -34,10 +31,7 @@ public class NettyServer {
     private static final Logger logger = LoggerFactory.getLogger(NettyServer.class);
 
     private final int port;
-
-    /** 请求处理器：Request → Response */
     private final Function<Request, Response> requestHandler;
-
     private EventLoopGroup bossGroup;
     private EventLoopGroup workerGroup;
 
@@ -46,9 +40,6 @@ public class NettyServer {
         this.requestHandler = requestHandler;
     }
 
-    /**
-     * 启动 Netty Server
-     */
     public void start() throws InterruptedException {
         bossGroup = new NioEventLoopGroup(1);
         workerGroup = new NioEventLoopGroup();
@@ -59,7 +50,10 @@ public class NettyServer {
                 .childHandler(new ChannelInitializer<SocketChannel>() {
                     @Override
                     protected void initChannel(SocketChannel ch) {
-                        ch.pipeline().addLast(new ServerHandler(requestHandler));
+                        ch.pipeline()
+                                .addLast("decoder", new RequestDecoder())
+                                .addLast("encoder", new ResponseEncoder())
+                                .addLast("handler", new ServerHandler(requestHandler));
                     }
                 });
 
@@ -67,9 +61,6 @@ public class NettyServer {
         logger.info("Netty Server started on port " + port);
     }
 
-    /**
-     * 停止 Netty Server
-     */
     public void stop() {
         if (bossGroup != null) bossGroup.shutdownGracefully();
         if (workerGroup != null) workerGroup.shutdownGracefully();
@@ -77,7 +68,58 @@ public class NettyServer {
     }
 
     /**
-     * 服务端处理器：收到字节 → 解码 Request → 处理 → 编码 Response → 发回
+     * 解码器：ByteBuf → Request
+     *
+     * 1. 读协议头（15 字节）
+     * 2. 读数据体（dataLength 字节）
+     * 3. 反序列化为 Request 对象
+     */
+    private static class RequestDecoder extends ChannelInboundHandlerAdapter {
+        @Override
+        public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+            ByteBuf buf = (ByteBuf) msg;
+
+            DubboCodec.Header header = DubboCodec.decodeHeader(buf);
+            if (header == null) {
+                return;
+            }
+
+            if (!header.isRequest()) {
+                throw new RuntimeException("Expected request but got type: " + header.getType());
+            }
+
+            if (buf.readableBytes() < header.getDataLength()) {
+                throw new RuntimeException("Incomplete data: expected " + header.getDataLength()
+                        + " but got " + buf.readableBytes());
+            }
+
+            Object data = DubboCodec.decodeData(buf, header.getDataLength());
+
+            Request request = new Request(header.getId());
+            request.setData(data);
+
+            ctx.fireChannelRead(request);
+        }
+    }
+
+    /**
+     * 编码器：Response → ByteBuf
+     */
+    private static class ResponseEncoder extends ChannelOutboundHandlerAdapter {
+        @Override
+        public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
+            if (msg instanceof Response) {
+                ByteBuf out = ctx.alloc().buffer();
+                DubboCodec.encodeResponse(out, (Response) msg);
+                ctx.write(out, promise);
+            } else {
+                ctx.write(msg, promise);
+            }
+        }
+    }
+
+    /**
+     * 业务处理器：Request → Response
      */
     private static class ServerHandler extends ChannelInboundHandlerAdapter {
         private final Function<Request, Response> requestHandler;
@@ -88,20 +130,11 @@ public class NettyServer {
 
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-            // 读取字节
-            ByteBuf buf = (ByteBuf) msg;
-            byte[] bytes = new byte[buf.readableBytes()];
-            buf.readBytes(bytes);
-
-            // 解码 Request
-            Request request = (Request) DubboCodec.decode(bytes);
-
-            // 处理请求
-            Response response = requestHandler.apply(request);
-
-            // 编码 Response → 发回
-            byte[] responseBytes = DubboCodec.encode(response);
-            ctx.writeAndFlush(Unpooled.wrappedBuffer(responseBytes));
+            if (msg instanceof Request) {
+                Request request = (Request) msg;
+                Response response = requestHandler.apply(request);
+                ctx.writeAndFlush(response);
+            }
         }
 
         @Override
