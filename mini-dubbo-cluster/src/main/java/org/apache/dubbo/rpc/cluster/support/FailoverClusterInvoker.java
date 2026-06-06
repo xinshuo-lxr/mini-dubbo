@@ -38,8 +38,8 @@ public class FailoverClusterInvoker<T> extends AbstractClusterInvoker<T> {
         RpcException lastException = null;
 
         for (int i = 0; i < len; i++) {
-            // 通过 LoadBalance 选择一个 Invoker
-            Invoker<T> invoker = loadbalance.select(invokers, invocation);
+            // 通过 LoadBalance 选择一个 Invoker，传入已调用列表避免重试选到同一个
+            Invoker<T> invoker = loadbalance.select(invokers, invocation, invoked);
             invoked.add(invoker);
 
             try {

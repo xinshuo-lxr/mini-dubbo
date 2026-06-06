@@ -22,8 +22,8 @@ public class FailfastClusterInvoker<T> extends AbstractClusterInvoker<T> {
 
     @Override
     protected Result doInvoke(Invocation invocation, List<Invoker<T>> invokers, LoadBalance loadbalance) throws RpcException {
-        // 只调用一次，不重试
-        Invoker<T> invoker = loadbalance.select(invokers, invocation);
+        // 只调用一次，不重试，invoked 传 null
+        Invoker<T> invoker = loadbalance.select(invokers, invocation, null);
         try {
             return invoker.invoke(invocation);
         } catch (RpcException e) {

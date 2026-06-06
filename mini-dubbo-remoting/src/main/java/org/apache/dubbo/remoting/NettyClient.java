@@ -35,7 +35,7 @@ public class NettyClient {
 
     private final String host;
     private final int port;
-    private Channel channel;
+    private volatile Channel channel;
     private EventLoopGroup group;
 
     /** 未完成的请求：requestId → CompletableFuture */
@@ -55,6 +55,7 @@ public class NettyClient {
                     @Override
                     protected void initChannel(SocketChannel ch) {
                         ch.pipeline()
+                                .addLast("frameDecoder", new DubboFrameDecoder())
                                 .addLast("encoder", new RequestEncoder())
                                 .addLast("decoder", new ResponseDecoder())
                                 .addLast("handler", new ClientHandler(pendingRequests));
@@ -115,32 +116,40 @@ public class NettyClient {
     private static class ResponseDecoder extends ChannelInboundHandlerAdapter {
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-            ByteBuf buf = (ByteBuf) msg;
-
-            DubboCodec.Header header = DubboCodec.decodeHeader(buf);
-            if (header == null) {
+            if (!(msg instanceof ByteBuf)) {
+                ctx.fireChannelRead(msg);
                 return;
             }
 
-            if (!header.isResponse()) {
-                throw new RuntimeException("Expected response but got type: " + header.getType());
+            ByteBuf buf = (ByteBuf) msg;
+            try {
+                DubboCodec.Header header = DubboCodec.decodeHeader(buf);
+                if (header == null) {
+                    return;
+                }
+
+                if (!header.isResponse()) {
+                    throw new RuntimeException("Expected response but got type: " + header.getType());
+                }
+
+                if (buf.readableBytes() < header.getDataLength()) {
+                    throw new RuntimeException("Incomplete data: expected " + header.getDataLength()
+                            + " but got " + buf.readableBytes());
+                }
+
+                Object data = DubboCodec.decodeData(buf, header.getDataLength());
+
+                Response response = new Response(header.getId());
+                if (data instanceof String) {
+                    response.setErrorMsg((String) data);
+                } else {
+                    response.setResult(data);
+                }
+
+                ctx.fireChannelRead(response);
+            } finally {
+                buf.release();
             }
-
-            if (buf.readableBytes() < header.getDataLength()) {
-                throw new RuntimeException("Incomplete data: expected " + header.getDataLength()
-                        + " but got " + buf.readableBytes());
-            }
-
-            Object data = DubboCodec.decodeData(buf, header.getDataLength());
-
-            Response response = new Response(header.getId());
-            if (data instanceof String) {
-                response.setErrorMsg((String) data);
-            } else {
-                response.setResult(data);
-            }
-
-            ctx.fireChannelRead(response);
         }
     }
 

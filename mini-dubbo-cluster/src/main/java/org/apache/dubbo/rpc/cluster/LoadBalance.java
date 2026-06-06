@@ -25,8 +25,9 @@ public interface LoadBalance {
      *
      * @param invokers   可用 Invoker 列表
      * @param invocation 当前调用
+     * @param invoked    已经调用过的 Invoker 列表（用于 Failover 重试时排除）
      * @return 选中的 Invoker
      */
     @Adaptive
-    <T> Invoker<T> select(List<Invoker<T>> invokers, Invocation invocation) throws RpcException;
+    <T> Invoker<T> select(List<Invoker<T>> invokers, Invocation invocation, List<Invoker<T>> invoked) throws RpcException;
 }
