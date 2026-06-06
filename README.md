@@ -2,6 +2,45 @@
 
 简易版 Dubbo —— 保留核心架构，去掉生产级复杂代码，帮助快速理解 Dubbo 核心机制。
 
+## 快速开始
+
+### 前置条件
+
+- JDK 8+
+- Maven 3.6+
+- ZooKeeper（Docker 启动最方便）
+
+```bash
+docker run -d -p 2181:2181 zookeeper:3.8
+```
+
+### 编译
+
+```bash
+cd mini-dubbo
+mvn clean install -DskipTests
+```
+
+### 启动 Provider
+
+```bash
+cd mini-dubbo-demo/mini-dubbo-demo-provider
+mvn exec:java -Dexec.mainClass="org.apache.dubbo.demo.ProviderApplication"
+```
+
+看到 `Provider started. Press Enter to exit...` 表示成功。
+
+### 启动 Consumer
+
+新开一个终端：
+
+```bash
+cd mini-dubbo-demo/mini-dubbo-demo-consumer
+mvn exec:java -Dexec.mainClass="org.apache.dubbo.demo.ConsumerApplication"
+```
+
+看到 `RPC result: Hello mini-dubbo, this is mini-dubbo!` 表示 RPC 调用成功。
+
 ## 模块结构
 
 ```
@@ -29,7 +68,7 @@ mini-dubbo/
 | **remoting** | 网络通信 | `NettyServer`, `NettyClient`, `DubboCodec`, `Request`, `Response` |
 | **rpc** | RPC 调用核心 | `Invoker`, `Invocation`, `Result`, `Protocol`, `Filter`, `ClusterFilter`, `ProxyFactory` |
 | **cluster** | 集群容错 + 负载均衡 | `Cluster`, `Directory`, `LoadBalance`, `FailoverCluster`, `FailfastCluster` |
-| **registry** | 注册中心 | `Registry`, `ZookeeperRegistry`, `NotifyListener` |
+| **registry** | 注册中心 | `Registry`, `RegistryFactory`, `ZookeeperRegistryFactory`, `ZookeeperRegistry`, `RegistryDirectory`, `NotifyListener` |
 | **config** | 配置 + 启动编排 | `ServiceConfig`, `ReferenceConfig`, `Bootstrap` |
 | **demo** | 示例 | `DemoService`, `DemoServiceImpl` |
 
