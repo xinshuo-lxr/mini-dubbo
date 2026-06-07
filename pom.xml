@@ -18,6 +18,8 @@
         <module>mini-dubbo-cluster</module>
         <module>mini-dubbo-registry</module>
         <module>mini-dubbo-config</module>
+        <module>mini-dubbo-spring-boot-autoconfigure</module>
+        <module>mini-dubbo-spring-boot-starter</module>
         <module>mini-dubbo-demo</module>
     </modules>
 
@@ -31,10 +33,20 @@
         <zookeeper.version>3.8.4</zookeeper.version>
         <slf4j.version>1.7.36</slf4j.version>
         <logback.version>1.2.12</logback.version>
+        <spring-boot.version>2.7.18</spring-boot.version>
     </properties>
 
     <dependencyManagement>
         <dependencies>
+            <!-- Spring Boot BOM -->
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>${spring-boot.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
             <!-- 内部模块 -->
             <dependency>
                 <groupId>org.apache.dubbo</groupId>
@@ -69,6 +81,16 @@
             <dependency>
                 <groupId>org.apache.dubbo</groupId>
                 <artifactId>mini-dubbo-demo-api</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.dubbo</groupId>
+                <artifactId>mini-dubbo-spring-boot-autoconfigure</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.dubbo</groupId>
+                <artifactId>mini-dubbo-spring-boot-starter</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
