@@ -21,6 +21,10 @@
     <file url="file://$PROJECT_DIR$/mini-dubbo-remoting/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/mini-dubbo-rpc/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/mini-dubbo-rpc/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/mini-dubbo-spring-boot-autoconfigure/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/mini-dubbo-spring-boot-autoconfigure/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/mini-dubbo-spring-boot-starter/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/mini-dubbo-spring-boot-starter/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/src/main/resources" charset="UTF-8" />
     <file url="PROJECT" charset="UTF-8" />
