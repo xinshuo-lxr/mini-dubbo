@@ -19,5 +19,7 @@
         <module>mini-dubbo-demo-api</module>
         <module>mini-dubbo-demo-provider</module>
         <module>mini-dubbo-demo-consumer</module>
+        <module>mini-dubbo-demo-spring-boot-provider</module>
+        <module>mini-dubbo-demo-spring-boot-consumer</module>
     </modules>
 </project>

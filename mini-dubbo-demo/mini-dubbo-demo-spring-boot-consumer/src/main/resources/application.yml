@@ -1,0 +1,5 @@
+dubbo:
+  application:
+    name: spring-boot-consumer
+  registry:
+    address: zookeeper://localhost:2181

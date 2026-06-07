@@ -9,6 +9,9 @@ import java.lang.annotation.Target;
 
 /**
  * 标记一个类为 Dubbo 服务提供者。
+ * <p>
+ * 由 {@link org.apache.dubbo.spring.boot.beans.factory.annotation.ServiceAnnotationPostProcessor}
+ * 扫描并注册为 Spring Bean，不需要 @Component。
  *
  * <pre>
  * &#64;DubboService

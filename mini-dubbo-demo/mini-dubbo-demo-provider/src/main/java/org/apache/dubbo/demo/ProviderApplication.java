@@ -17,7 +17,7 @@ public class ProviderApplication {
         Bootstrap.provider()
                 .application(new ApplicationConfig("mini-dubbo-provider"))
                 .registry(new RegistryConfig("zookeeper://localhost:2181"))
-                .protocol(new ProtocolConfig("dubbo", 20880))
+                .protocol(new ProtocolConfig("dubbo", 20882))
                 .service(DemoService.class, new DemoServiceImpl())
                 .start();
 

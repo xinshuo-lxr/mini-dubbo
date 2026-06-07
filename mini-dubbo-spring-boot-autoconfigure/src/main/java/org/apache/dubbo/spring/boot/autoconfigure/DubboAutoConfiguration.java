@@ -8,9 +8,6 @@ import org.apache.dubbo.spring.boot.annotation.DubboService;
 import org.apache.dubbo.spring.boot.beans.factory.annotation.ReferenceAnnotationBeanPostProcessor;
 import org.apache.dubbo.spring.boot.beans.factory.annotation.ServiceAnnotationPostProcessor;
 
-import java.util.Set;
-
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -55,20 +52,20 @@ public class DubboAutoConfiguration {
     }
 
     /**
-     * 创建服务暴露后处理器：扫描 @DubboService 注解的类，自动导出服务。
-     * packagesToScan 由 @EnableDubbo 注解的 scanBasePackages 属性提供。
+     * 创建服务暴露后处理器：扫描 @DubboService 类并自动导出服务。
+     * 必须是 static 方法，因为 ServiceAnnotationPostProcessor 实现了 BeanDefinitionRegistryPostProcessor，
+     * 需要在 @Configuration 类实例化之前创建。
      */
     @Bean
-    public static ServiceAnnotationPostProcessor serviceAnnotationPostProcessor(
-            @Qualifier("dubbo.packagesToScan") Set<String> packagesToScan) {
-        return new ServiceAnnotationPostProcessor(packagesToScan);
+    public static ServiceAnnotationPostProcessor serviceAnnotationPostProcessor() {
+        return new ServiceAnnotationPostProcessor();
     }
 
     /**
      * 创建服务引用后处理器：扫描 @DubboReference 注解的字段，自动注入代理对象。
      */
     @Bean
-    public static ReferenceAnnotationBeanPostProcessor referenceAnnotationBeanPostProcessor() {
+    public ReferenceAnnotationBeanPostProcessor referenceAnnotationBeanPostProcessor() {
         return new ReferenceAnnotationBeanPostProcessor();
     }
 }

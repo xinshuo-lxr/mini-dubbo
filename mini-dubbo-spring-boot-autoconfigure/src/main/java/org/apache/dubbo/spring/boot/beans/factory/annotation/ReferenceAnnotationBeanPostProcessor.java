@@ -17,15 +17,15 @@ import org.springframework.beans.factory.config.InstantiationAwareBeanPostProces
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
-import org.springframework.stereotype.Component;
 
 /**
  * 服务引用后处理器。
  * <p>
  * 扫描 @DubboReference 注解的字段，在 Bean 属性填充阶段注入代理对象。
  * 对相同接口+版本+分组的引用复用同一个 ReferenceConfig，避免重复创建连接。
+ * <p>
+ * 由 {@link org.apache.dubbo.spring.boot.autoconfigure.DubboAutoConfiguration} 注册为 Bean。
  */
-@Component
 public class ReferenceAnnotationBeanPostProcessor implements InstantiationAwareBeanPostProcessor, ApplicationContextAware {
 
     private static final Logger logger = LoggerFactory.getLogger(ReferenceAnnotationBeanPostProcessor.class);

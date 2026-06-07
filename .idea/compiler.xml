@@ -6,17 +6,19 @@
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
-        <module name="mini-dubbo-registry" />
-        <module name="mini-dubbo-demo-provider" />
-        <module name="mini-dubbo-common" />
+        <module name="mini-dubbo-demo-spring-boot-consumer" />
         <module name="mini-dubbo-cluster" />
-        <module name="mini-dubbo-spring-boot-starter" />
+        <module name="mini-dubbo-demo-spring-boot-provider" />
         <module name="mini-dubbo-config" />
         <module name="mini-dubbo-demo-api" />
-        <module name="mini-dubbo-demo-consumer" />
         <module name="mini-dubbo-rpc" />
         <module name="mini-dubbo-remoting" />
         <module name="mini-dubbo-spring-boot-autoconfigure" />
+        <module name="mini-dubbo-registry" />
+        <module name="mini-dubbo-demo-provider" />
+        <module name="mini-dubbo-common" />
+        <module name="mini-dubbo-spring-boot-starter" />
+        <module name="mini-dubbo-demo-consumer" />
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel target="11" />
