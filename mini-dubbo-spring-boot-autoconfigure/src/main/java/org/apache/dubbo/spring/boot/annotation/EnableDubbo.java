@@ -7,6 +7,9 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import org.apache.dubbo.spring.boot.autoconfigure.EnableDubboConfiguration;
+import org.springframework.context.annotation.Import;
+
 /**
  * 启用 Dubbo 注解扫描和自动配置。
  *
@@ -20,6 +23,7 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Inherited
 @Documented
+@Import(EnableDubboConfiguration.class)
 public @interface EnableDubbo {
 
     /**
